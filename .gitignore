@@ -1,0 +1,10 @@
+# 忽略.vs
+.vs/
+
+Debug/
+
+x64/
+
+HighConcurrencyMemoryPool.sln
+
+mini tcmalloc.vcxproj*
