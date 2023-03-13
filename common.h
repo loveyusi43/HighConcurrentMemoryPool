@@ -15,8 +15,8 @@ static const size_t PAGE_SHIFT = 13;
 
 #ifdef _WIN32
 	#include <windows.h>
-#else
-//linux
+#elif __linux__
+	#include <unistd.h>
 #endif
 
 
@@ -24,8 +24,8 @@ inline static void* SystemAlloc(size_t kpage)
 {
 #ifdef _WIN32
 	void* ptr = VirtualAlloc(0, kpage << 13, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-#else
-	// linux
+#elif __linux__
+	void *ptr = sbrk(kpage << 13);
 #endif
 
 	if (nullptr == ptr)
@@ -46,6 +46,8 @@ inline static void SystemFree(void* ptr)
 	typedef unsigned long long PAGE_ID;
 #elif _WIN32
 	typedef size_t PAGE_ID;
+#elif __linux__
+	typedef unsigned long long PAGE_ID;
 #endif
 
 #include <cassert>

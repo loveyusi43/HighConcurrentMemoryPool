@@ -46,7 +46,7 @@ void* ThreadCache::FetchFromCentralCache(size_t index, size_t size)
 {
 	// 慢开始反馈调节算法
 	// 申请任何对象的内存块时都从1开始逐个递增，上限在[2,512]之间(取决于对象的大小)
-	const size_t batch_num = min(free_list_[index].MaxSize()++, SizeClass::NumMoveSize(size));
+	const size_t batch_num = std::min(free_list_[index].MaxSize()++, SizeClass::NumMoveSize(size));
 
 	void* start = nullptr;
 	void* end = nullptr;
