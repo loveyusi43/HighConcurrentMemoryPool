@@ -10,3 +10,5 @@ HighConcurrencyMemoryPool.sln
 mini tcmalloc.vcxproj*
 
 *.out
+
+*.o
