@@ -48,7 +48,7 @@ public:
 private:
 	char* memory_ = nullptr;       // 指向大块内存的指针
 	void* free_list_ = nullptr;    // 管理回收内存块的自由链表的头指针
-	rsize_t remain_bytes_ = 0;     // 大块内存剩余的字节数
+	size_t remain_bytes_ = 0;     // 大块内存剩余的字节数
 };
 
 #endif
