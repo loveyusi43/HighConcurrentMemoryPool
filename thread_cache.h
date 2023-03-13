@@ -21,6 +21,10 @@ private:
 };
 
 // 使用TLS技术实现每个进程的内存池无锁访问
-static _declspec(thread) ThreadCache* p_tls_thread_cache = nullptr;
+#ifdef _WIN32
+	static _declspec(thread) ThreadCache* p_tls_thread_cache = nullptr;
+#elif __linux__
+	static ThreadCache* p_tls_thread_cache = nullptr;
+#endif
 
 #endif
