@@ -5,8 +5,8 @@
 #include <algorithm>
 #include <unordered_map>
 
-static const size_t MAX_BYTES = 256 * 1024;
-static const size_t NFREE_LIST = 208;
+static const size_t MAX_BYTES = 256 * 1024; // thread_cache能申请的最大内存
+static const size_t NFREE_LIST = 208; // 自由链表的总数
 static const size_t PAGES = 129;
 static const size_t PAGE_SHIFT = 13;
 
@@ -43,9 +43,9 @@ inline static void SystemFree(void* ptr)
 }
 
 #ifdef _WIN64
-	typedef unsigned long long PAGE_ID;
+	typedef unsigned long long PAGE_ID; // 2^64/2^13 = 2^51
 #elif _WIN32
-	typedef size_t PAGE_ID;
+	typedef size_t PAGE_ID;  // 2^32/2^13 = 2^19
 #elif __linux__
 	typedef unsigned long long PAGE_ID;
 #endif
@@ -118,7 +118,7 @@ public:
 
 private:
 	void* free_list_ = nullptr;
-	size_t max_size_ = 1;
+	size_t max_size_ = 1; // 向CentralCache申请内存块的起始个数
 	size_t size_ = 0;
 };
 
@@ -137,12 +137,13 @@ public:
 ///	[64*1024+1,256*1024]      8*1024byte对齐         free_list_[184,208)
 /// </summary>
 
+	// 不同的区间有不同的映射规则（对齐数不同）
 	static inline size_t _RoundUp(const size_t size, const size_t align_num)
 	{
 		size_t align_size = 0;
-		if (size%align_num != 0)
+		if (size%align_num != 0)  // 5%8 = 5 != 0
 		{
-			align_size = (size / align_num + 1) * align_num;
+			align_size = (size / align_num + 1) * align_num; // = (5/8+1)*8 = 1*8 = 8
 		}
 		else
 		{
@@ -151,6 +152,7 @@ public:
 		return align_size;
 	}
 
+	// 返回将size按照上述对齐规则对齐后的大小
 	static inline size_t RoundUp(size_t size)
 	{
 		if (size <= 128)
@@ -214,7 +216,7 @@ public:
 		}
 		else if (bytes <= 256*1024)
 		{
-			return _Index(bytes - 64 * 1024, 8 * 1024) + group_array[0] + group_array[1] + group_array[2] + group_array[3];
+			return _Index(bytes - 64 * 1024, 8 * 1024) + group_array[0] + group_array[1] + group_array[2]+ group_array[3];
 		}
 		else
 		{
@@ -227,7 +229,7 @@ public:
 	{
 		assert(size > 0);
 
-		int num = MAX_BYTES / size;
+		size_t num = MAX_BYTES / size;
 		// 根据申请内存对象的不同返回不同的内存数量，但返回的内存块不会过大或过小，将其控制在[2,512]范围内，小对象多返回一点内存块，大对象少返回一点内存块
 		if (num < 2)
 			num = 2;
@@ -251,6 +253,9 @@ public:
 
 /*************************************************************************************************/
 
+// 管理以页为单位的大块内存
+// **在CentralCache中**每个Span内部把自己切为多个小块内存，当thread_cache申请内存时返回多块内存
+// thread_cache是无锁的，所以在thread_cache中申请内存是最优的
 struct Span
 {
 	// page_id_是每一页内存的编号(8k为一页)，在32位下最大编号为：2^32 / 2^13 = 2^19,而在64位平台下最大编号为：2^64 / 2^13 = 2^51,超出了一个整形的表示范围
@@ -260,6 +265,7 @@ struct Span
 	Span* next_ = nullptr;
 	Span* prev_ = nullptr;
 
+	// use_count_ == 0时说明该Span的小块内存已经全部还回来了，即该Span一块"完整"的内存
 	size_t use_count_ = 0; // 小块内存使用的数量(分配出去的小块内存的数量)
 	void* free_list_ = nullptr; // 切好的小块内存的自由链表
 
@@ -270,6 +276,7 @@ struct Span
 
 /************************************************************************************************/
 
+// 带头双向循环链表
 class SpanList
 {
 public:
@@ -319,7 +326,8 @@ public:
 		pos->prev_ = new_span;
 	}
 
-	void Erase(Span* pos)
+	// 将Span从SpanList中弹出，还给上一层的PageCache
+	void Erase(Span* pos) const
 	{
 		assert(pos && pos != head_);
 

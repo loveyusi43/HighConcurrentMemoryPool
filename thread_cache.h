@@ -11,7 +11,7 @@ public:
 
 	void Deallocate(void* ptr, size_t size);
 
-	// 从中心缓存获取对象
+	// 从中心缓存获取多块内存
 	void* FetchFromCentralCache(size_t index, size_t size);
 
 	void ListTooLong(FreeList& list, size_t size);
@@ -21,6 +21,7 @@ private:
 };
 
 // 使用TLS技术实现每个进程的内存池无锁访问
+// 对所在的线程是可以全局访问到的，但不能被其它线程访问
 #ifdef _WIN32
 	static _declspec(thread) ThreadCache* p_tls_thread_cache = nullptr;
 #elif __linux__

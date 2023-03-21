@@ -13,6 +13,7 @@ void* ThreadCache::Allocate(size_t size)
 	}
 	else
 	{
+		// 申请的批量内存第一个返回，多余的插入到对应的自由链表中
 		return FetchFromCentralCache(index, align_size);  // 当这一级(thread cache)没有内存时向下一级(central cache)申请内存，此时以及在本级处理好了内存对齐规则，下一级不用管内存对齐规则。
 	}
 }
@@ -49,12 +50,15 @@ void* ThreadCache::FetchFromCentralCache(size_t index, size_t size)
 	#ifdef __linux__
 		const size_t batch_num = std::min(free_list_[index].MaxSize()++, SizeClass::NumMoveSize(size));
 	#elif _WIN32
+		// 无论size多大, SizeClass::NumMoveSize的返回值都在[2,512]
 		const size_t batch_num = min(free_list_[index].MaxSize()++, SizeClass::NumMoveSize(size));
 	#endif
 
+	// 批量内存块的起始和终止指针
 	void* start = nullptr;
 	void* end = nullptr;
 	const size_t actual_num = CentralCache::GetInstance()->FetchRangeObj(start, end, batch_num, size);
+	// 最少返回一块内存
 	assert(actual_num >= 1);
 	if (actual_num == 1)
 	{
@@ -62,6 +66,7 @@ void* ThreadCache::FetchFromCentralCache(size_t index, size_t size)
 	}
 	else
 	{
+		// 多余的插入到对应的自由链表中
 		free_list_[index].PushRange(NextObj(start), end, actual_num - 1);
 	}
 

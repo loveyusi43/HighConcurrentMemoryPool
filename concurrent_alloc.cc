@@ -2,7 +2,7 @@
 
 void* ConcurrentAlloc(size_t size)
 {
-	if (size > MAX_BYTES)
+	if (size > MAX_BYTES) // 当申请的内存大于MAX_BYTES时，直接向page_cache申请内存
 	{
 		size_t align_size = SizeClass::RoundUp(size);
 		size_t k_page = align_size >> PAGE_SHIFT;

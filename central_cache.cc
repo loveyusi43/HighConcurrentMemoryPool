@@ -86,7 +86,7 @@ void CentralCache::ReleaseListToSpans(void* start, size_t byte_size)
 
 size_t CentralCache::FetchRangeObj(void*& start, void*& end, size_t batch_num, size_t size)
 {
-	size_t index = SizeClass::Index(size);
+	size_t index = SizeClass::Index(size); // 计算对应的桶号
 	span_list_[index].mtx_.lock();
 
 	Span* span = GetOneSpan(span_list_[index], size);
